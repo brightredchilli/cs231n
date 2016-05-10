@@ -1,13 +1,19 @@
 import numpy as np
+import itertools
 from cs231n.classifiers.linear_svm import *
 from cs231n.classifiers.softmax import *
 
 class LinearClassifier(object):
     def __init__(self):
         self.W = None # A (D, C) matrix of weights
+        self.learning_rate = 0
+        self.regularization = 0
+
 
     def train(self, X, y, learning_rate=1e-3, reg=1e-5, num_iters=100,
     batch_size=200, verbose=False):
+        self.learning_rate = learning_rate
+        self.regularization = reg
         """
         Train this linear classifier using stochastic gradient descent.
 
@@ -50,47 +56,34 @@ class LinearClassifier(object):
         return loss_history
 
     def predict(self, X):
-    #   """
-    #   Use the trained weights of this linear classifier to predict labels for
-    #   data points.
-    #
-    #   Inputs:
-    #   - X: D x N array of training data. Each column is a D-dimensional point.
-    #
-    #   Returns:
-    #   - y_pred: Predicted labels for the data in X. y_pred is a 1-dimensional
-    #     array of length N, and each element is an integer giving the predicted
-    #     class.
-    #   """
         y_pred = np.zeros(X.shape[1])
-    #
-    #   ###########################################################################
-    #   # TODO:                                                                   #
-    #   # Implement this method. Store the predicted labels in y_pred.            #
-    #   ###########################################################################
-        pass
-    #   ###########################################################################
-    #   #                           END OF YOUR CODE                              #
-    #   ###########################################################################
         return y_pred
 
     def loss(self, X_batch, y_batch, reg):
-        """
-        Compute the loss function and its derivative.
-        Subclasses will override this.
+        pass
 
-        Inputs:
-        - X_batch: A numpy array of shape (N, D) containing a minibatch of N
-        data points; each point has dimension D.
-        - y_batch: A numpy array of shape (N,) containing labels for the minibatch.
-        - reg: (float) regularization strength.
+    @classmethod
+    def getBestClassifier(cls, X, y, X_val, y_val, learning_rates, regularization_strengths, iterations):
+        results = {}
+        best_val = -1   # The highest validation accuracy that we have seen so far.
+        best_classifier = None # The best classifier we have seen so far
+        for lr,r in itertools.product(learning_rates, regularization_strengths):
+            cur = cls()
+            cur_best_accu = -1
+            loss_hist = cur.train(X, y, learning_rate=lr, reg=r,
+            num_iters=iterations, verbose=False)
+            y_train_pred = cur.predict(X)
+            y_train_accu = np.mean(y_train_pred == y)
+            y_val_pred = cur.predict(X_val)
+            y_val_accu = np.mean(y_val_pred == y_val)
 
-        Returns: A tuple containing:
-        - loss as a single float
-        - gradient with respect to self.W; an array of the same shape as W
-        """
-        # pass
+            results[(lr, r)] = (y_train_accu, y_val_accu)
+            if best_val < y_val_accu:
+                best_val = y_val_accu
+                best_classifier = cur
+            print("learning rate: {}  reg: {}  best_accu: {}".format(lr, r, y_val_accu))
 
+        return results, best_val, best_classifier
 
 class LinearSVM(LinearClassifier):
     """ A subclass that uses the Multiclass SVM loss function """
@@ -109,6 +102,7 @@ class Softmax(LinearClassifier):
 
     def predict(self, X):
         print("softmax_loss_vectorized predict")
+
         return y_pred
 
     def loss(self, X_batch, y_batch, reg):
