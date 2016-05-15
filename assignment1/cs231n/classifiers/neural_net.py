@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-
+from cs231n.classifiers import Softmax
 
 class TwoLayerNet(object):
   """
@@ -79,7 +79,8 @@ class TwoLayerNet(object):
     #############################################################################
     XW = X.dot(W1) + b1 # N, H
     X1 = XW * (XW>0) # ReLU
-    X2 = X1.dot(W2) + b2
+    softmax = Softmax(W2)
+    X2 = softmax.scores(X1) + b2
     #############################################################################
     #                              END OF YOUR CODE                             #
     #############################################################################
@@ -91,13 +92,16 @@ class TwoLayerNet(object):
     # Compute the loss
     loss = None
     #############################################################################
-    # TODO: Finish the forward pass, and compute the loss. This should include  #
+    # Finish the forward pass, and compute the loss. This should include  #
     # both the data loss and L2 regularization for W1 and W2. Store the result  #
     # in the variable loss, which should be a scalar. Use the Softmax           #
     # classifier loss. So that your results match ours, multiply the            #
     # regularization loss by 0.5                                                #
     #############################################################################
-    pass
+    W1_loss = 0.5 * reg * np.sum(W1 * W1)
+    # W2_loss = 0.5 * reg * np.sum(W2 * W2)
+    softmax_loss, dW = softmax.loss(X1, y, reg)
+    loss = softmax_loss + W1_loss
     #############################################################################
     #                              END OF YOUR CODE                             #
     #############################################################################
