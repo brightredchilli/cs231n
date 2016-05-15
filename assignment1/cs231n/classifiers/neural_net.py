@@ -63,25 +63,30 @@ class TwoLayerNet(object):
       with respect to the loss function; has the same keys as self.params.
     """
     # Unpack variables from the params dictionary
-    W1, b1 = self.params['W1'], self.params['b1']
-    W2, b2 = self.params['W2'], self.params['b2']
+    W1 = self.params['W1'] # D,H
+    b1 = self.params['b1'] # H,
+    W2 = self.params['W2'] # H,C
+    b2 = self.params['b2'] # C,
     N, D = X.shape
 
     # Compute the forward pass
     scores = None
+
     #############################################################################
-    # TODO: Perform the forward pass, computing the class scores for the input. #
+    # Perform the forward pass, computing the class scores for the input. #
     # Store the result in the scores variable, which should be an array of      #
     # shape (N, C).                                                             #
     #############################################################################
-    pass
+    XW = X.dot(W1) + b1 # N, H
+    X1 = XW * (XW>0) # ReLU
+    X2 = X1.dot(W2) + b2
     #############################################################################
     #                              END OF YOUR CODE                             #
     #############################################################################
-    
+
     # If the targets are not given then jump out, we're done
     if y is None:
-      return scores
+      return X2
 
     # Compute the loss
     loss = None
@@ -214,5 +219,3 @@ class TwoLayerNet(object):
     ###########################################################################
 
     return y_pred
-
-
