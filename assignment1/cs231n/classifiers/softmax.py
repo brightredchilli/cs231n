@@ -34,6 +34,9 @@ def softmax_loss_vectorized(W, X, y, reg):
     loss = 0.0
     dW = np.zeros_like(W)
 
+    if y is None:
+        y = np.zeros(N).astype(int)
+
     y_pred = X.dot(W)
     y_pred -= np.max(y_pred, 1).reshape(N,1)
     fyi = y_pred[np.arange(N), y] # N array

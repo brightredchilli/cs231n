@@ -4,8 +4,8 @@ from cs231n.classifiers.linear_svm import *
 from cs231n.classifiers.softmax import *
 
 class LinearClassifier(object):
-    def __init__(self):
-        self.W = None # A (D, C) matrix of weights
+    def __init__(self, W=None):
+        self.W = W # A (D, C) matrix of weights
         self.learning_rate = 0
         self.regularization = 0
 
@@ -100,9 +100,14 @@ class LinearSVM(LinearClassifier):
 class Softmax(LinearClassifier):
     """ A subclass that uses the Softmax + Cross-entropy loss function """
 
-    def predict(self, X):
-        print("softmax_loss_vectorized predict")
+    def scores(self, X):
+        # X: (N, D) matrix
+        # self.W - (D, C) matrix of weights
+        scores = X.dot(self.W) # (N, C) matrix of results
+        return scores
 
+    def predict(self, X):
+        y_pred = np.argmax(self.scores(X), 1) # N array of indices of the highest score
         return y_pred
 
     def loss(self, X_batch, y_batch, reg):
