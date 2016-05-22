@@ -68,6 +68,7 @@ class TwoLayerNet(object):
     W2 = self.params['W2'] # H,C
     b2 = self.params['b2'] # C,
     N, D = X.shape
+    C = b2.size
 
     # Compute the forward pass
     scores = None
@@ -79,8 +80,40 @@ class TwoLayerNet(object):
     #############################################################################
     XW = X.dot(W1) + b1 # N, H
     X1 = XW * (XW>0) # ReLU
-    softmax = Softmax(W2)
-    X2 = softmax.scores(X1) + b2
+    X2 = X1.dot(W2) + b2
+
+    X2 -= np.max(X2, 1).reshape(N,1) # recenter mean on 0
+    fyi = X2[np.arange(N), y] # N array
+
+    efyi = np.exp(fyi)
+    ej = np.exp(X2)
+    jej = np.sum(ej, 1)
+    invej = 1 / jej
+    a = efyi * invej
+    b = np.log(a)
+    f = -1 * b
+
+    db = -1
+    da = 1 / a
+    defyi = invej * efyi
+    dinvej = efyi * -(1/ (jej * jej))
+    dej = ej
+
+    dX2 = (db * da * dinvej).reshape(N,1) * dej
+
+    dfyi = db * da * defyi
+    index = np.zeros((N, C))
+    index[np.arange(N), y] = dfyi # This is N,C
+    dX2 += index
+
+    dX1 = dX2.dot(W2.T)
+    dW2 = X1.T.dot(dX2)
+    db2 = dX2.sum(0)
+
+    # print("N = {}, D = {}, C = {}".format(N, D, C))
+    # print("dX2 shape = {} W2 shape = {}, X1 shape = {} b2 shape = {}".format(dX2.shape, W2.shape, X1.shape, b2.shape))
+    # print("dW2 shape = {} dX1 shape = {}".format(dW2.shape, dX1.shape))
+
     #############################################################################
     #                              END OF YOUR CODE                             #
     #############################################################################
@@ -98,10 +131,9 @@ class TwoLayerNet(object):
     # classifier loss. So that your results match ours, multiply the            #
     # regularization loss by 0.5                                                #
     #############################################################################
-    W1_loss = 0.5 * reg * np.sum(W1 * W1)
-    # W2_loss = 0.5 * reg * np.sum(W2 * W2)
-    softmax_loss, dW = softmax.loss(X1, y, reg)
-    loss = softmax_loss + W1_loss
+    W1_reg = 0.5 * reg * np.sum(W1 * W1)
+    W2_reg = 0.5 * reg * np.sum(W2 * W2)
+    loss = np.sum(f)/N + W1_reg + W2_reg
     #############################################################################
     #                              END OF YOUR CODE                             #
     #############################################################################
@@ -109,11 +141,19 @@ class TwoLayerNet(object):
     # Backward pass: compute gradients
     grads = {}
     #############################################################################
-    # TODO: Compute the backward pass, computing the derivatives of the weights #
+    # Compute the backward pass, computing the derivatives of the weights #
     # and biases. Store the results in the grads dictionary. For example,       #
     # grads['W1'] should store the gradient on W1, and be a matrix of same size #
     #############################################################################
-    pass
+
+    dX1 *= (XW>0) # zero out those entries where it is less than 0
+    db1 = np.sum(dX1, 0)
+    dW1 = X.T.dot(dX1)
+
+    grads["W1"] = dW1 / N
+    grads["W2"] = dW2 / N
+    grads["b1"] = db1 / N
+    grads["b2"] = db2 / N
     #############################################################################
     #                              END OF YOUR CODE                             #
     #############################################################################
