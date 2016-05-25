@@ -93,27 +93,6 @@ class TwoLayerNet(object):
     b = np.log(a)
     f = -1 * b
 
-    db = -1
-    da = 1 / a
-    defyi = invej * efyi
-    dinvej = efyi * -(1/ (jej * jej))
-    dej = ej
-
-    dX2 = (db * da * dinvej).reshape(N,1) * dej
-
-    dfyi = db * da * defyi
-    index = np.zeros((N, C))
-    index[np.arange(N), y] = dfyi # This is N,C
-    dX2 += index
-
-    dX1 = dX2.dot(W2.T)
-    dW2 = X1.T.dot(dX2)
-    db2 = dX2.sum(0)
-
-    # print("N = {}, D = {}, C = {}".format(N, D, C))
-    # print("dX2 shape = {} W2 shape = {}, X1 shape = {} b2 shape = {}".format(dX2.shape, W2.shape, X1.shape, b2.shape))
-    # print("dW2 shape = {} dX1 shape = {}".format(dW2.shape, dX1.shape))
-
     #############################################################################
     #                              END OF YOUR CODE                             #
     #############################################################################
@@ -146,9 +125,32 @@ class TwoLayerNet(object):
     # grads['W1'] should store the gradient on W1, and be a matrix of same size #
     #############################################################################
 
+    db = -1
+    da = 1 / a
+    defyi = invej * efyi
+    dinvej = efyi * -(1/ (jej * jej))
+    dej = ej
+
+    dX2 = (db * da * dinvej).reshape(N,1) * dej
+
+    dfyi = db * da * defyi
+    index = np.zeros((N, C))
+    index[np.arange(N), y] = dfyi # This is N,C
+    dX2 += index
+
+    dX1 = dX2.dot(W2.T)
+    dW2 = X1.T.dot(dX2)
+    db2 = dX2.sum(0)
+
+    dW2_reg = 0.5 * W2
+    dW2 += dW2_reg
+
     dX1 *= (XW>0) # zero out those entries where it is less than 0
     db1 = np.sum(dX1, 0)
     dW1 = X.T.dot(dX1)
+
+    dW1_reg = 0.5 * W1
+    dW1 += dW1_reg
 
     grads["W1"] = dW1 / N
     grads["W2"] = dW2 / N
