@@ -156,18 +156,16 @@ class TwoLayerNet(object):
         dW2 = X1.T.dot(dX2)
         db2 = dX2.sum(0)
 
-        dW2_reg = 0.5 * W2
-        dW2 += dW2_reg
 
         dX1 *= (XW>0) # zero out those entries where it is less than 0
         db1 = np.sum(dX1, 0)
         dW1 = X.T.dot(dX1)
 
-        dW1_reg = 0.5 * W1
-        dW1 += dW1_reg
+        dW1_reg = 0.5 * reg * (2 * W1) # note that these are not divided by N.
+        dW2_reg = 0.5 * reg * (2 * W2) # note that these are not divided by N.
 
-        grads["W1"] = dW1 / N
-        grads["W2"] = dW2 / N
+        grads["W1"] = dW1 / N + dW1_reg
+        grads["W2"] = dW2 / N + dW2_reg
         grads["b1"] = db1 / N
         grads["b2"] = db2 / N
         #############################################################################
