@@ -57,6 +57,12 @@ class TwoLayerNet(object):
         self.params['W2'] = std * np.random.randn(hidden_size, output_size)
         self.params['b2'] = np.zeros(output_size)
 
+        self.params_cache = {}
+        self.params_cache['W1'] = np.zeros_like(self.params['W1'])
+        self.params_cache['b1'] = np.zeros_like(self.params['b1'])
+        self.params_cache['W2'] = np.zeros_like(self.params['W2'])
+        self.params_cache['b2'] = np.zeros_like(self.params['b2'])
+
     def loss(self, X, y=None, reg=0.0):
         """
         Compute the loss and gradients for a two layer fully connected neural
@@ -241,6 +247,12 @@ class TwoLayerNet(object):
             self.params['W2'] = W2
             self.params['b2'] = b2
 
+            decay_rate = 0.99
+            self.params_cache['W1'] = decay_rate * self.params_cache['W1'] + (1 - decay_rate) * W1
+            self.params_cache['b1'] = decay_rate * self.params_cache['b1'] + (1 - decay_rate) * b1
+            self.params_cache['W2'] = decay_rate * self.params_cache['W2'] + (1 - decay_rate) * W2
+            self.params_cache['b2'] = decay_rate * self.params_cache['b2'] + (1 - decay_rate) * b2
+
             if verbose and it % 100 == 0:
                 print 'iteration %d / %d: loss %f' % (it, num_iters, loss)
 
@@ -280,10 +292,10 @@ class TwoLayerNet(object):
         ###########################################################################
         # Implement this function; it should be VERY simple!                #
         ###########################################################################
-        W1 = self.params['W1'] # D,H
-        b1 = self.params['b1'] # H,
-        W2 = self.params['W2'] # H,C
-        b2 = self.params['b2'] # C,
+        W1 = (self.params_cache['W1'] + self.params['W1']) / 2 if self.params_cache.has_key('W1') else self.params['W1'] # D,H
+        b1 = (self.params_cache['b1'] + self.params['b1']) / 2 if self.params_cache.has_key('b1') else self.params['b1'] # H,
+        W2 = (self.params_cache['W2'] + self.params['W2']) / 2 if self.params_cache.has_key('W2') else self.params['W2'] # H,C
+        b2 = (self.params_cache['b2'] + self.params['b2']) / 2 if self.params_cache.has_key('b2') else self.params['b2'] # C,
 
         XW = X.dot(W1) + b1 # N, H
         X1 = XW * (XW>0) # ReLU
