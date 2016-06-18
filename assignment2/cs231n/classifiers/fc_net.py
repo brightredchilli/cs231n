@@ -173,7 +173,15 @@ class FullyConnectedNet(object):
     # beta2, etc. Scale parameters should be initialized to one and shift      #
     # parameters should be initialized to zero.                                #
     ############################################################################
-    pass
+    self.dims = [input_dim]
+    self.dims += hidden_dims
+    self.dims.append(num_classes)
+    for i in xrange(len(self.dims) - 1):
+      w = np.random.normal(scale=weight_scale, size=(self.dims[i], self.dims[i+1]))
+      b = np.zeros(self.dims[i+1])
+      self.set_w_at(i, w)
+      self.set_b_at(i, b)
+
     ############################################################################
     #                             END OF YOUR CODE                             #
     ############################################################################
@@ -200,6 +208,24 @@ class FullyConnectedNet(object):
     for k, v in self.params.iteritems():
       self.params[k] = v.astype(dtype)
 
+
+  def w_name_at(self, i):
+    return "W{}".format(i+1)
+
+  def w_at(self, i):
+    return self.params[self.w_name_at(i)]
+
+  def set_w_at(self, i, val):
+    self.params[self.w_name_at(i)] = val
+
+  def b_name_at(self, i):
+    return "b{}".format(i+1)
+
+  def b_at(self, i):
+    return self.params[self.b_name_at(i)]
+
+  def set_b_at(self, i, val):
+    self.params[self.b_name_at(i)] = val
 
   def loss(self, X, y=None):
     """
@@ -231,7 +257,21 @@ class FullyConnectedNet(object):
     # self.bn_params[1] to the forward pass for the second batch normalization #
     # layer, etc.                                                              #
     ############################################################################
-    pass
+
+    cache = None
+    w_reg = 0
+    scores = X
+    for i in xrange(self.num_layers):
+      W = self.w_at(i)
+      b = self.b_at(i)
+      print("i:{} x.shape = {}, w.shape = {}, b.shape = {}".format(i, scores.shape, W.shape, b.shape))
+      if i == self.num_layers - 1:
+        scores, cache = affine_forward(scores, W, b)
+      else:
+        scores, cache = affine_relu_forward(scores, W, b)
+      w_reg += 0.5 * self.reg * np.sum(W * W)
+
+
     ############################################################################
     #                             END OF YOUR CODE                             #
     ############################################################################
@@ -240,7 +280,11 @@ class FullyConnectedNet(object):
     if mode == 'test':
       return scores
 
+
     loss, grads = 0.0, {}
+
+    loss, dx = softmax_loss(scores, y)
+    loss += w_reg
     ############################################################################
     # TODO: Implement the backward pass for the fully-connected net. Store the #
     # loss in the loss variable and gradients in the grads dictionary. Compute #
