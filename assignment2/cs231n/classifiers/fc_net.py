@@ -234,6 +234,7 @@ class FullyConnectedNet(object):
     Input / output: Same as TwoLayerNet above.
     """
     X = X.astype(self.dtype)
+    N = X.shape[0]
     mode = 'test' if y is None else 'train'
 
     # Set train/test mode for batchnorm params and dropout param since they
@@ -261,14 +262,17 @@ class FullyConnectedNet(object):
     cache = None
     w_reg = 0
     scores = X
+    caches = []
     for i in xrange(self.num_layers):
       W = self.w_at(i)
       b = self.b_at(i)
-      print("i:{} x.shape = {}, w.shape = {}, b.shape = {}".format(i, scores.shape, W.shape, b.shape))
+      # print("i:{} x.shape = {}, w.shape = {}, b.shape = {}".format(i, scores.shape, W.shape, b.shape))
       if i == self.num_layers - 1:
         scores, cache = affine_forward(scores, W, b)
+        caches.append(cache)
       else:
         scores, cache = affine_relu_forward(scores, W, b)
+        caches.append(cache)
       w_reg += 0.5 * self.reg * np.sum(W * W)
 
 
@@ -280,11 +284,6 @@ class FullyConnectedNet(object):
     if mode == 'test':
       return scores
 
-
-    loss, grads = 0.0, {}
-
-    loss, dx = softmax_loss(scores, y)
-    loss += w_reg
     ############################################################################
     # TODO: Implement the backward pass for the fully-connected net. Store the #
     # loss in the loss variable and gradients in the grads dictionary. Compute #
@@ -298,7 +297,23 @@ class FullyConnectedNet(object):
     # automated tests, make sure that your L2 regularization includes a factor #
     # of 0.5 to simplify the expression for the gradient.                      #
     ############################################################################
-    pass
+
+    loss, grads = 0.0, {}
+
+    loss, dx = softmax_loss(scores, y)
+    loss += w_reg
+
+    for i in reversed(xrange(self.num_layers)):
+      cache = caches[i]
+      dw, db = None, None
+      if i == self.num_layers - 1:
+        dx, dw, db = affine_backward(dx, cache)
+      else:
+        dx, dw, db = affine_relu_backward(dx, cache)
+
+      grads[self.w_name_at(i)] = (dw) + (0.5 * self.reg * 2 * self.w_at(i))
+      grads[self.b_name_at(i)] = (db) + (0.5 * self.reg * 2 * self.b_at(i))
+
     ############################################################################
     #                             END OF YOUR CODE                             #
     ############################################################################
