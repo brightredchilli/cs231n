@@ -146,6 +146,7 @@ def batchnorm_forward(x, gamma, beta, bn_param):
     running_var = bn_param.get('running_var', np.zeros(D, dtype=x.dtype))
 
     out, cache = None, None
+    mean, var = None, None
     if mode == 'train':
         #############################################################################
         # TODO: Implement the training-time forward pass for batch normalization.   #
@@ -160,7 +161,12 @@ def batchnorm_forward(x, gamma, beta, bn_param):
         # the momentum variable to update the running mean and running variance,    #
         # storing your result in the running_mean and running_var variables.        #
         #############################################################################
-        pass
+        mean = x.mean(0)
+        var = np.sum((x - mean)**2, 0) / N
+
+        bn_param['running_mean'] = momentum * running_mean + (1 - momentum) * mean
+        bn_param['running_var'] = momentum * running_var + (1 - momentum) * var
+
         #############################################################################
         #                             END OF YOUR CODE                              #
         #############################################################################
@@ -171,16 +177,16 @@ def batchnorm_forward(x, gamma, beta, bn_param):
         # and shift the normalized data using gamma and beta. Store the result in   #
         # the out variable.                                                         #
         #############################################################################
-        pass
+        mean = running_mean
+        var = running_var
         #############################################################################
         #                             END OF YOUR CODE                              #
         #############################################################################
     else:
         raise ValueError('Invalid forward batchnorm mode "%s"' % mode)
 
-    # Store the updated running means back into bn_param
-    bn_param['running_mean'] = running_mean
-    bn_param['running_var'] = running_var
+    x = (x - mean) / np.sqrt(var + eps)
+    out = x * gamma + beta
 
     return out, cache
 
