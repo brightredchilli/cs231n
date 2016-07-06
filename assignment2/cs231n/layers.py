@@ -162,8 +162,7 @@ def batchnorm_forward(x, gamma, beta, bn_param):
         # storing your result in the running_mean and running_var variables.        #
         #############################################################################
         mean = x.mean(0)
-        xmu = x - mean
-        var = np.sum((xmu)**2, 0) / N
+        var = np.sum((x - mean)**2, 0) / N
 
         bn_param['running_mean'] = momentum * running_mean + (1 - momentum) * mean
         bn_param['running_var'] = momentum * running_var + (1 - momentum) * var
@@ -186,6 +185,7 @@ def batchnorm_forward(x, gamma, beta, bn_param):
     else:
         raise ValueError('Invalid forward batchnorm mode "%s"' % mode)
 
+    xmu = x - mean
     sqrtvar = np.sqrt(var + eps)
     x = xmu / sqrtvar
     out = x * gamma + beta

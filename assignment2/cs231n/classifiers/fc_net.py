@@ -181,6 +181,9 @@ class FullyConnectedNet(object):
       b = np.zeros(self.dims[i+1])
       self.set_w_at(i, w)
       self.set_b_at(i, b)
+      if use_batchnorm:
+        self.set_param_at('gamma', i, np.ones(self.dims[i]))
+        self.set_param_at('beta', i, np.zeros(self.dims[i]))
 
     ############################################################################
     #                             END OF YOUR CODE                             #
@@ -223,6 +226,15 @@ class FullyConnectedNet(object):
 
   def b_at(self, i):
     return self.params[self.b_name_at(i)]
+
+  def param_name_at(self, name, i):
+    return "{}{}".format(name, i+1)
+
+  def param_at(self, name, i):
+    return self.params[self.param_name_at(name, i)]
+
+  def set_param_at(self, name, i, val):
+    self.params[self.param_name_at(name, i)] = val
 
   def set_b_at(self, i, val):
     self.params[self.b_name_at(i)] = val
@@ -271,7 +283,13 @@ class FullyConnectedNet(object):
         scores, cache = affine_forward(scores, W, b)
         caches.append(cache)
       else:
-        scores, cache = affine_relu_forward(scores, W, b)
+        if self.use_batchnorm:
+          gamma = self.param_at("gamma", i)
+          beta = self.param_at("beta", i)
+          bn_params = self.bn_params[i]
+          scores, cache = batchnorm_affine_relu_forward(scores, W, b, gamma, beta, bn_params)
+        else:
+          scores, cache = affine_relu_forward(scores, W, b)
         caches.append(cache)
       w_reg += 0.5 * self.reg * np.sum(W * W)
 
@@ -309,7 +327,12 @@ class FullyConnectedNet(object):
       if i == self.num_layers - 1:
         dx, dw, db = affine_backward(dx, cache)
       else:
-        dx, dw, db = affine_relu_backward(dx, cache)
+        if self.use_batchnorm:
+          dx, dgamma, dbeta, dw, db = batchnorm_affine_relu_backward(dx, cache)
+          grads[self.param_name_at("gamma", i)] = dgamma
+          grads[self.param_name_at("beta", i)] = dbeta
+        else:
+          dx, dw, db = affine_relu_backward(dx, cache)
 
       grads[self.w_name_at(i)] = (dw) + (0.5 * self.reg * 2 * self.w_at(i))
       grads[self.b_name_at(i)] = (db) + (0.5 * self.reg * 2 * self.b_at(i))
@@ -319,3 +342,31 @@ class FullyConnectedNet(object):
     ############################################################################
 
     return loss, grads
+
+def batchnorm_affine_relu_forward(x, w, b, gamma, beta, bn_params):
+  """
+  Convenience layer that performs a batch normalization, followed by
+  an affine transform, followed by a ReLU
+
+  Inputs:
+  - x: Input to the affine layer
+  - w, b: Weights for the affine layer
+  - gamma, beta: Scale and shift parameters for the batchnorm layer
+
+  Returns a tuple of:
+  - out: Output from the ReLU
+  - cache: Object to give to the backward pass
+  """
+
+  bn_out, bn_cache = batchnorm_forward(x, gamma, beta, bn_params)
+  out, cache = affine_relu_forward(bn_out, w, b)
+  return out, (bn_cache, cache)
+
+def batchnorm_affine_relu_backward(dout, cache):
+  """
+  Backward pass for the batchnorm-affine-relu convenience layer
+  """
+  bn_cache, ar_cache = cache
+  dx, dw, db = affine_relu_backward(dout, ar_cache)
+  dx, dgamma, dbeta = batchnorm_backward(dx, bn_cache)
+  return dx, dgamma, dbeta, dw, db
