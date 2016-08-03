@@ -181,7 +181,7 @@ class FullyConnectedNet(object):
       b = np.zeros(self.dims[i+1])
       self.set_w_at(i, w)
       self.set_b_at(i, b)
-      if use_batchnorm:
+      if use_batchnorm and i < self.num_layers - 1:
         self.set_param_at('gamma', i, np.ones(self.dims[i]))
         self.set_param_at('beta', i, np.zeros(self.dims[i]))
 
@@ -275,6 +275,7 @@ class FullyConnectedNet(object):
     w_reg = 0
     scores = X
     caches = []
+    dropout_caches = []
     for i in xrange(self.num_layers):
       W = self.w_at(i)
       b = self.b_at(i)
@@ -291,6 +292,11 @@ class FullyConnectedNet(object):
         else:
           scores, cache = affine_relu_forward(scores, W, b)
         caches.append(cache)
+        if self.use_dropout:
+          # print("forward shape[{}] {}".format(i, scores.shape))
+          scores, dropout_cache = dropout_forward(scores, self.dropout_param)
+          dropout_caches.append(dropout_cache)
+
       w_reg += 0.5 * self.reg * np.sum(W * W)
 
 
@@ -327,6 +333,10 @@ class FullyConnectedNet(object):
       if i == self.num_layers - 1:
         dx, dw, db = affine_backward(dx, cache)
       else:
+        if self.use_dropout:
+          dropout_param, mask = dropout_caches[i]
+          # print("backward shape[{}] {}".format(i, mask.shape))
+          dx = dropout_backward(dx, dropout_caches[i])
         if self.use_batchnorm:
           dx, dgamma, dbeta, dw, db = batchnorm_affine_relu_backward(dx, cache)
           grads[self.param_name_at("gamma", i)] = dgamma
