@@ -177,8 +177,15 @@ class FullyConnectedNet(object):
     self.dims += hidden_dims
     self.dims.append(num_classes)
     for i in xrange(len(self.dims) - 1):
-      w = np.random.normal(scale=weight_scale, size=(self.dims[i], self.dims[i+1]))
-      b = np.zeros(self.dims[i+1])
+
+      # I don't really understand why, but this initialization gives better convergence.
+      # In particular, if I do not multiply by weight_scale, I get some infinite losses.
+      w = (np.random.randn(self.dims[i], self.dims[i+1]) * weight_scale) / np.sqrt(2.0/(self.dims[i] + self.dims[i+1]))
+      b = (np.random.randn(self.dims[i+1]) * weight_scale) / np.sqrt(2.0/(self.dims[i] + self.dims[i+1]))
+
+      # w = np.random.normal(scale=weight_scale, size=(self.d ims[i], self.dims[i+1]))
+      # b = np.zeros(self.dims[i+1])
+
       self.set_w_at(i, w)
       self.set_b_at(i, b)
       if use_batchnorm and i < self.num_layers - 1:
@@ -210,6 +217,8 @@ class FullyConnectedNet(object):
     # Cast all parameters to the correct datatype
     for k, v in self.params.iteritems():
       self.params[k] = v.astype(dtype)
+
+    print("Batchnorm: {} dropout: {}".format(self.use_batchnorm, self.use_dropout))
 
 
   def w_name_at(self, i):
@@ -281,6 +290,7 @@ class FullyConnectedNet(object):
       b = self.b_at(i)
       # print("i:{} x.shape = {}, w.shape = {}, b.shape = {}".format(i, scores.shape, W.shape, b.shape))
       if i == self.num_layers - 1:
+        # print("[{}] affine forward ".format(i))
         scores, cache = affine_forward(scores, W, b)
         caches.append(cache)
       else:
@@ -290,6 +300,7 @@ class FullyConnectedNet(object):
           bn_params = self.bn_params[i]
           scores, cache = batchnorm_affine_relu_forward(scores, W, b, gamma, beta, bn_params)
         else:
+          # print("[{}] affine relu forward".format(i))
           scores, cache = affine_relu_forward(scores, W, b)
         caches.append(cache)
         if self.use_dropout:
@@ -331,6 +342,7 @@ class FullyConnectedNet(object):
       cache = caches[i]
       dw, db = None, None
       if i == self.num_layers - 1:
+        # print("[{}] affine backward".format(i))
         dx, dw, db = affine_backward(dx, cache)
       else:
         if self.use_dropout:
@@ -342,10 +354,11 @@ class FullyConnectedNet(object):
           grads[self.param_name_at("gamma", i)] = dgamma
           grads[self.param_name_at("beta", i)] = dbeta
         else:
+          # print("[{}] affine relu backward".format(i))
           dx, dw, db = affine_relu_backward(dx, cache)
 
       grads[self.w_name_at(i)] = (dw) + (0.5 * self.reg * 2 * self.w_at(i))
-      grads[self.b_name_at(i)] = (db) + (0.5 * self.reg * 2 * self.b_at(i))
+      grads[self.b_name_at(i)] = (db) #+ (0.5 * self.reg * 2 * self.b_at(i))
 
     ############################################################################
     #                             END OF YOUR CODE                             #
