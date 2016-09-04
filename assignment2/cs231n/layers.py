@@ -401,12 +401,42 @@ def conv_forward_naive(x, w, b, conv_param):
         W' = 1 + (W + 2 * pad - WW) / stride
     - cache: (x, w, b, conv_param)
     """
+
     out = None
     #############################################################################
     # TODO: Implement the convolutional forward pass.                           #
     # Hint: you can use the function np.pad for padding.                        #
     #############################################################################
-    pass
+    N, C, H, W = x.shape
+    F, C, HH, WW = w.shape
+    S = conv_param["stride"]
+    P = conv_param["pad"]
+    H_new = (H - HH + 2 * P) / S + 1
+    W_new = (W - WW + 2 * P) / S + 1
+    print("N: {}  C: {}  H: {}  W: {}".format(*x.shape))
+    print("F: {}  C: {}  HH: {}  WW: {}".format(*w.shape))
+    print("S: {}  P: {}".format(S, P))
+    print("H': {}  W': {}".format(H_new, W_new))
+
+    # stride and pad settings should never result in non integer width and heights
+    if W_new != int(W_new): raise AssertionError()
+    if H_new != int(H_new): raise AssertionError()
+
+    x_ = np.pad(x, [(0,0),(0,0),(P,P),(P,P)], 'constant', constant_values=0)
+    w_ = w.reshape((F, -1)) # F(number of filters, or depth) x (HH * WW * C)filter area
+    out = np.zeros([N, F, H_new, W_new])
+    for i_n, x_cur in enumerate(x_):
+        # Build an input volume.
+        x_new = np.zeros((HH * WW * C, W_new * H_new)) # filter area x new area
+        for (i, (row, col)) in enumerate(np.ndindex(H_new, W_new)):
+            row_offset = row * S
+            col_offset = col * S
+            cur = x_cur[:, row_offset:row_offset + HH, col_offset:col_offset + WW]
+            x_new[:, i] = cur.reshape(-1)
+        result = w_.dot(x_new) + b[:, None] # b[:, None] force transposes 1d array
+        out[i_n] = result.reshape(F, H_new, W_new)
+
+
     #############################################################################
     #                             END OF YOUR CODE                              #
     #############################################################################
