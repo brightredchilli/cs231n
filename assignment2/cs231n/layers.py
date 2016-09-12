@@ -413,34 +413,38 @@ def conv_forward_naive(x, w, b, conv_param):
     P = conv_param["pad"]
     H_new = (H - HH + 2 * P) / S + 1
     W_new = (W - WW + 2 * P) / S + 1
-    print("N: {}  C: {}  H: {}  W: {}".format(*x.shape))
-    print("F: {}  C: {}  HH: {}  WW: {}".format(*w.shape))
-    print("S: {}  P: {}".format(S, P))
-    print("H': {}  W': {}".format(H_new, W_new))
+    # print("N: {}  C: {}  H: {}  W: {}".format(*x.shape))
+    # print("F: {}  C: {}  HH: {}  WW: {}".format(*w.shape))
+    # print("S: {}  P: {}".format(S, P))
+    # print("H': {}  W': {}".format(H_new, W_new))
 
     # stride and pad settings should never result in non integer width and heights
     if W_new != int(W_new): raise AssertionError()
     if H_new != int(H_new): raise AssertionError()
 
-    x_ = np.pad(x, [(0,0),(0,0),(P,P),(P,P)], 'constant', constant_values=0)
+    # We have a placeholder to store the new, padded x for backprop
+    x_ = np.zeros((N, HH * WW * C, W_new * H_new))
+
+    x = np.pad(x, [(0,0),(0,0),(P,P),(P,P)], 'constant', constant_values=0)
     w_ = w.reshape((F, -1)) # F(number of filters, or depth) x (HH * WW * C)filter area
     out = np.zeros([N, F, H_new, W_new])
-    for i_n, x_cur in enumerate(x_):
+    for i_n, x_cur in enumerate(x):
         # Build an input volume.
-        x_new = np.zeros((HH * WW * C, W_new * H_new)) # filter area x new area
+        x_new = np.zeros((HH * WW * C, W_new * H_new)) # receptive field x new area
         for (i, (row, col)) in enumerate(np.ndindex(H_new, W_new)):
             row_offset = row * S
             col_offset = col * S
             cur = x_cur[:, row_offset:row_offset + HH, col_offset:col_offset + WW]
             x_new[:, i] = cur.reshape(-1)
         result = w_.dot(x_new) + b[:, None] # b[:, None] force transposes 1d array
+        x_[i_n] = x_new
         out[i_n] = result.reshape(F, H_new, W_new)
 
 
     #############################################################################
     #                             END OF YOUR CODE                              #
     #############################################################################
-    cache = (x, w, b, conv_param)
+    cache = (x_, w, b, conv_param)
     return out, cache
 
 
@@ -461,7 +465,58 @@ def conv_backward_naive(dout, cache):
     #############################################################################
     # TODO: Implement the convolutional backward pass.                          #
     #############################################################################
-    pass
+    # x_ is naming convention to indicate that it is x in the form with overlap
+    # -ping receptive fields
+    x_, w, b, conv_param = cache
+    N, receptive_field, new_area = x_.shape
+    F, C, HH, WW = w.shape
+    N, _, H_n, W_n = dout.shape
+    S = conv_param["stride"]
+    P = conv_param["pad"]
+    H = S * (H_n - 1) + HH - 2 * P # get height and width by reversing formula
+    W = S * (W_n - 1) + WW - 2 * P
+
+    # stride and pad settings should never result in non integer width and heights
+    if H != int(H): raise AssertionError()
+    if W != int(W): raise AssertionError()
+
+    db = dout.sum(0).sum(1).sum(1) # sum over n, then over the ouput volume area
+
+    # flatten weights and output so that each filter is a row
+    dout = dout.reshape(N, F, H_n * W_n)
+    w = w.reshape(F, C * HH * WW)
+
+    # define all of the arrays that will hold data
+    dx_ = np.zeros((N, HH * WW * C, W_n * H_n))
+    dw = np.zeros((F, C * HH * WW))
+
+    # for each filter
+    for i, dout_cur in enumerate(dout):
+        # dx_cur = w'(receptive field x F) x dout_cur(F x new area)
+        dx_cur = w.T.dot(dout_cur)
+        dx_[i] = dx_cur # this is dx_ because it is padded.
+
+        # dw_cur = dout_cur(F x new area) x X'(new area x receptive field)
+        dw_cur = dout_cur.dot(x_[i].T)
+        dw += dw_cur
+
+    #padded H and W
+    HP = H + 2 * P
+    WP = W + 2 * P
+
+    # reshape dx_ back to a padded dx
+    dx = np.zeros((N, C, HP, WP))
+
+    # the index i here refers to the receptive field of 'pixel' i in the output
+    # volume
+    for (i, (row, col)) in enumerate(np.ndindex(H_n, W_n)):
+        row_offset = row * S
+        col_offset = col * S
+        cur = dx_[:, :, i].reshape(N, C, HH, WW)
+        dx[:, :, row_offset:row_offset + HH, col_offset:col_offset + WW] += cur
+
+    dx = dx[:, :, P:-P, P:-P] # unpad the array
+    dw = dw.reshape(F, C, HH, WW)
     #############################################################################
     #                             END OF YOUR CODE                              #
     #############################################################################
