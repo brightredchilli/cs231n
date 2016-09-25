@@ -539,13 +539,36 @@ def max_pool_forward_naive(x, pool_param):
     - cache: (x, pool_param)
     """
     out = None
+
     #############################################################################
     # TODO: Implement the max pooling forward pass                              #
     #############################################################################
-    pass
+    N, C, H, W = x.shape
+    F_h = pool_param["pool_height"]
+    F_w = pool_param["pool_width"]
+    S = pool_param["stride"]
+
+    H_n = (H - F_h) / S + 1
+    W_n = (W - F_w) / S + 1
+
+    out = np.zeros((N, C, H_n, W_n))
+
+    # mask = np.zeros(x.shape)
+    # print("x = {}".format(x.shape))
+    # print("N = {}, C = {}, H = {}, W = {}".format(N, C, H, W))
+    # print("F_h = {}, F_w = {}, S = {}".format(F_h, F_w, S))
+    # print("H_n = {}, W_n = {}".format(H_n, W_n))
+    for (i, (row, col)) in enumerate(np.ndindex(H_n, W_n)):
+        y_offset = row * S
+        x_offset = col * S
+        # get the maximum in the filter area
+        x_cur = x[:, :, y_offset:y_offset + F_h, x_offset:x_offset + F_w]
+        # mask[:, :, y_offset:y_offset + F_h, x_offset:x_offset + F_w] = x_cur == x_cur.max(axis=(2,3), keepdims=True)
+        out[:, :, row, col] = x_cur.max(axis=(2,3))
     #############################################################################
     #                             END OF YOUR CODE                              #
     #############################################################################
+
     cache = (x, pool_param)
     return out, cache
 
@@ -565,12 +588,35 @@ def max_pool_backward_naive(dout, cache):
     #############################################################################
     # TODO: Implement the max pooling backward pass                             #
     #############################################################################
-    pass
+    x, pool_param = cache
+    dx = np.zeros(x.shape)
+    N, C, H_n, W_n = dout.shape
+    F_h = pool_param["pool_height"]
+    F_w = pool_param["pool_width"]
+    S = pool_param["stride"]
+    for (i, (row, col)) in enumerate(np.ndindex(H_n, W_n)):
+        y_offset = row * S
+        x_offset = col * S
+        # get the maximum in the filter area
+        x_cur = x[:, :, y_offset:y_offset + F_h, x_offset:x_offset + F_w]
+
+        # get a mask - this is to get an boolean index that we multiply with
+        # the gradient from below to get the gradient in each of the
+        # 'max' positions
+        mask = x_cur == x_cur.max(axis=(2,3), keepdims=True)
+
+        # This dx_ has the gradient in the proper position in the filter area
+        # we are currently looking at. dout[:, :, row, col] produces a (N, C)
+        # array. We have to reshape so that in can be broadcast with the mask.
+        dx_ = mask * dout[:, :, row, col].reshape(N, C, 1, 1)
+
+
+        dx[:, :, y_offset:y_offset + F_h, x_offset:x_offset + F_w] += dx_
+
     #############################################################################
     #                             END OF YOUR CODE                              #
     #############################################################################
     return dx
-
 
 def spatial_batchnorm_forward(x, gamma, beta, bn_param):
     """
