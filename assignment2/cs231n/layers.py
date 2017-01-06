@@ -19,7 +19,7 @@ def affine_forward(x, w, b):
     - out: output, of shape (N, M)
     - cache: (x, w, b)
     """
-    # also can be obtained by multipling the dimensions but N (d_1, ..., d_k)
+    # also can be obtained by multipling the dimensions because X = (N, d_1, ..., d_k)
     # ... like so D = np.prod(x.shape()[1:])
     D = w.shape[0] # but this is cleaner
     N = x.shape[0]
@@ -610,7 +610,6 @@ def max_pool_backward_naive(dout, cache):
         # array. We have to reshape so that in can be broadcast with the mask.
         dx_ = mask * dout[:, :, row, col].reshape(N, C, 1, 1)
 
-
         dx[:, :, y_offset:y_offset + F_h, x_offset:x_offset + F_w] += dx_
 
     #############################################################################
@@ -643,18 +642,26 @@ def spatial_batchnorm_forward(x, gamma, beta, bn_param):
     out, cache = None, None
 
     #############################################################################
-    # TODO: Implement the forward pass for spatial batch normalization.         #
+    # Implement the forward pass for spatial batch normalization.               #
     #                                                                           #
     # HINT: You can implement spatial batch normalization using the vanilla     #
     # version of batch normalization defined above. Your implementation should  #
     # be very short; ours is less than five lines.                              #
     #############################################################################
-    pass
+    N, C, H, W = x.shape
+    tmp = x.transpose(1,0,2,3).mean(-1).mean(-1).mean(-1)
+    print("tmp.shape {}".format(tmp.shape))
+    out, cache = batchnorm_forward(tmp, gamma, beta, bn_param)
+    tmp = np.ones_like(tmp)
+    for i in arange(tmp.size):
+      tmp[i] *= out[i]
+
+    tmp = tmp.reshape(N, C, H, W)
     #############################################################################
     #                             END OF YOUR CODE                              #
     #############################################################################
 
-    return out, cache
+    return tmp, cache
 
 
 def spatial_batchnorm_backward(dout, cache):
