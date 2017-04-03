@@ -649,19 +649,14 @@ def spatial_batchnorm_forward(x, gamma, beta, bn_param):
     # be very short; ours is less than five lines.                              #
     #############################################################################
     N, C, H, W = x.shape
-    tmp = x.transpose(1,0,2,3).mean(-1).mean(-1).mean(-1)
-    print("tmp.shape {}".format(tmp.shape))
+    tmp = x.transpose(0,2,3,1).reshape(-1, C)
     out, cache = batchnorm_forward(tmp, gamma, beta, bn_param)
-    tmp = np.ones_like(tmp)
-    for i in arange(tmp.size):
-      tmp[i] *= out[i]
-
-    tmp = tmp.reshape(N, C, H, W)
+    out = out.reshape(N, H, W, C).transpose(0,3,1,2)
     #############################################################################
     #                             END OF YOUR CODE                              #
     #############################################################################
 
-    return tmp, cache
+    return out, cache
 
 
 def spatial_batchnorm_backward(dout, cache):
@@ -679,6 +674,7 @@ def spatial_batchnorm_backward(dout, cache):
     """
     dx, dgamma, dbeta = None, None, None
 
+
     #############################################################################
     # TODO: Implement the backward pass for spatial batch normalization.        #
     #                                                                           #
@@ -686,7 +682,11 @@ def spatial_batchnorm_backward(dout, cache):
     # version of batch normalization defined above. Your implementation should  #
     # be very short; ours is less than five lines.                              #
     #############################################################################
-    pass
+
+    N, C, H, W = dout.shape
+    dout = dout.transpose(0,2,3,1).reshape(-1, C)
+    dx, dgamma, dbeta = batchnorm_backward(dout, cache)
+    dx = dx.reshape(N, H, W, C).transpose(0, 3, 1, 2)
     #############################################################################
     #                             END OF YOUR CODE                              #
     #############################################################################

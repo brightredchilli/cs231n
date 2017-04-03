@@ -1,6 +1,8 @@
 *.swp
 *.pyc
+*.jpg
 .env/*
 **/.ipynb_checkpoints/*
 **/.ipynb
+**/datasets/*
 
