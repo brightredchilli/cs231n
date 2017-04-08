@@ -1,6 +1,5 @@
 import numpy as np
 
-
 """
 This file defines layer types that are commonly used for recurrent neural
 networks.
@@ -87,12 +86,6 @@ def rnn_step_backward(dnext_h, cache):
   dx = d.dot(Wx.T)
   dWx = x.T.dot(d)
 
-  print("dx=%s, dprev_h=%s, dWx=%s, dWh=%s, db=%s" % (dx.shape, dprev_h.shape, dWx.shape, dWh.shape, db.shape))
-
-  # killing buffers
-  # rename in place
-  # python autocomplete
-
   ##############################################################################
   #                               END OF YOUR CODE                             #
   ##############################################################################
@@ -123,7 +116,20 @@ def rnn_forward(x, h0, Wx, Wh, b):
   # input data. You should use the rnn_step_forward function that you defined  #
   # above.                                                                     #
   ##############################################################################
-  pass
+
+
+  N, T, D = x.shape
+  H = b.size
+
+  h, cache = np.ndarray((N, T, H)), []
+  prev_h = h0
+  for t in xrange(x.shape[1]):
+    x_t = x[:,t,:]
+    h_t, cache_t = rnn_step_forward(x_t, prev_h, Wx, Wh, b)
+    h[:,t,:] = h_t
+    cache.append(cache_t)
+    prev_h = h_t
+
   ##############################################################################
   #                               END OF YOUR CODE                             #
   ##############################################################################
@@ -150,7 +156,24 @@ def rnn_backward(dh, cache):
   # sequence of data. You should use the rnn_step_backward function that you   #
   # defined above.                                                             #
   ##############################################################################
-  pass
+
+  N, T, H = dh.shape
+
+  dh0_t = np.zeros((N, H))
+
+  for t in reversed(xrange(dh.shape[1])):
+    dx_t, dh0_t, dWx_t, dWh_t, db_t = rnn_step_backward(dh[:,t,:] + dh0_t, cache[t])
+
+    if dx is None:
+      dx, dh0, dWx, dWh, db = np.zeros((N, T, dx_t.shape[1])), np.zeros_like(dh0_t), np.zeros_like(dWx_t), np.zeros_like(dWh_t), np.zeros_like(db_t)
+
+    dx[:,t,:] += dx_t
+    dh0 = dh0_t
+    dWx += dWx_t
+    dWh += dWh_t
+    db += db_t
+
+
   ##############################################################################
   #                               END OF YOUR CODE                             #
   ##############################################################################
