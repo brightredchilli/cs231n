@@ -114,8 +114,7 @@ def rnn_forward(x, h0, Wx, Wh, b):
   ##############################################################################
   # TODO: Implement forward pass for a vanilla RNN running on a sequence of    #
   # input data. You should use the rnn_step_forward function that you defined  #
-  # above.                                                                     #
-  ##############################################################################
+  # above.                                                                     # ##############################################################################
 
 
   N, T, D = x.shape
@@ -134,7 +133,6 @@ def rnn_forward(x, h0, Wx, Wh, b):
   #                               END OF YOUR CODE                             #
   ##############################################################################
   return h, cache
-
 
 def rnn_backward(dh, cache):
   """
@@ -201,7 +199,13 @@ def word_embedding_forward(x, W):
   #                                                                            #
   # HINT: This should be very simple.                                          #
   ##############################################################################
-  pass
+  cache = {}
+  cache["W.shape"] = W.shape
+  N, T = x.shape
+  D = W.shape[1]
+  x = x.reshape(-1) # flatten the array
+  out = W[x].reshape(N, T, D)
+  cache["x"] = x
   ##############################################################################
   #                               END OF YOUR CODE                             #
   ##############################################################################
@@ -229,7 +233,13 @@ def word_embedding_backward(dout, cache):
   #                                                                            #
   # HINT: Look up the function np.add.at                                       #
   ##############################################################################
-  pass
+  x = cache["x"]
+  wshape = cache["W.shape"]
+  N, T, D = dout.shape
+  dout = dout.reshape(-1, D)
+  dW = np.zeros(wshape)
+  np.add.at(dW, x, dout)
+
   ##############################################################################
   #                               END OF YOUR CODE                             #
   ##############################################################################
@@ -423,7 +433,6 @@ def temporal_affine_backward(dout, cache):
   db = dout.sum(axis=(0, 1))
 
   return dx, dw, db
-
 
 def temporal_softmax_loss(x, y, mask, verbose=False):
   """
