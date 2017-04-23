@@ -19,7 +19,22 @@ def softmax_loss_naive(W, X, y, reg):
     - loss as single float
     - gradient with respect to weights W; an array of same shape as W
     """
-    return softmax_loss_vectorized(W, X, y, reg)
+
+    # reimplemented sort of for fun
+    N, D = X.shape
+    pred = X.dot(W)
+    pred -= np.max(pred, axis=1, keepdims=True)
+    a = np.exp(pred)
+    b = a[np.arange(N),y] / a.sum(1)
+
+    c = -np.log(b)
+    loss = np.sum(c) / N
+
+    loss += 0.5 * reg * np.sum(W * W)
+
+    return loss, 0
+    #return softmax_loss_vectorized(W, X, y, reg)
+
 
 
 def softmax_loss_vectorized(W, X, y, reg):
