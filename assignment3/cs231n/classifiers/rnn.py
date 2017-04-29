@@ -139,21 +139,28 @@ class CaptioningRNN(object):
     # captions_in = N, T, x = N x T x D
     x, embed_cache = word_embedding_forward(captions_in, W_embed)
 
+    # W_proj = F x H, where F is the dimensionality of the output of CNN
+    # features = N x F, h0 = N x H
+    h0 = features.dot(W_proj) + b_proj # NB: no tanh!- notes are wrong
     if self.cell_type == 'rnn':
-      # W_proj = F x H, where F is the dimensionality of the output of CNN
-      # features = N x F, h0 = N x H
-      h0 = features.dot(W_proj) + b_proj # NB: no tanh!- notes are wrong
       h, cache = rnn_forward(x, h0, Wx, Wh, b)
-      pred, pred_cache = temporal_affine_forward(h, W_vocab, b_vocab)
-      loss, dx = temporal_softmax_loss(pred, captions_out, mask)
+    else:
+      h, cache = lstm_forward(x, h0, Wx, Wh, b)
 
-      dh, dW_vocab, db_vocab = temporal_affine_backward(dx, pred_cache)
+    pred, pred_cache = temporal_affine_forward(h, W_vocab, b_vocab)
+    loss, dx = temporal_softmax_loss(pred, captions_out, mask)
+
+    dh, dW_vocab, db_vocab = temporal_affine_backward(dx, pred_cache)
+
+    if self.cell_type == 'rnn':
       dx, dh0, dWx, dWh, db = rnn_backward(dh, cache)
+    else:
+      dx, dh0, dWx, dWh, db = lstm_backward(dh, cache)
 
-      db_proj = dh0.sum(0)
-      dW_proj = features.T.dot(dh0)
+    db_proj = dh0.sum(0)
+    dW_proj = features.T.dot(dh0)
 
-      dW_embed = word_embedding_backward(dx, embed_cache)
+    dW_embed = word_embedding_backward(dx, embed_cache)
 
     grads['Wx'] = dWx
     grads['Wh'] = dWh
@@ -227,6 +234,7 @@ class CaptioningRNN(object):
 
     # W_proj = F x H, where F is the dimensionality of the output of CNN
     h = features.dot(W_proj) + b_proj
+    c = np.zeros_like(h) # lstm cell state always starts with zeroes
 
     # W_embed = V x W, V = vocab size, W = embedding size
     W = W_embed.shape[1]
@@ -236,7 +244,11 @@ class CaptioningRNN(object):
     for i in np.arange(max_length):
       # embeddings, _ = word_embedding_forward(x, W_embed)
       embeddings = W_embed[x.reshape(-1)].reshape(N, W)
-      h, _ = rnn_step_forward(embeddings, h, Wx, Wh, b) # N x H
+
+      if self.cell_type == 'rnn':
+        h, _ = rnn_step_forward(embeddings, h, Wx, Wh, b) # N x H
+      else:
+        h, c, _ = lstm_step_forward(embeddings, h, c, Wx, Wh, b) # N x H
       scores = h.dot(W_vocab) + b_vocab # N x V
       x = np.argmax(scores, axis=1) # N
       captions[:, i] = x
